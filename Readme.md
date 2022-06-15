@@ -5,13 +5,13 @@ Particle layer for deck.gl, based on [deck.gl-particle](https://github.com/weath
 - [Global wind demo](https://junhaotong.github.io/deckgl-particle/)
 - [Part wind demo](https://junhaotong.github.io/deckgl-particle/part-wind.html)
 
-<img src="./docs/screen-shot.png" alt="Screenshot" width="640" height="320">
+<img src="https://junhaotong.github.io/deckgl-particle/screen-shot.png" alt="Screenshot" width="640" height="320">
 
 ## Usage
 
 ```
 import { Deck } from '@deck.gl/core';
-import { ParticleLayer } from 'deckgl-particle';
+import { ParticleLayer } from 'deckgl-particle-layer';
 
 const deckgl = new Deck({
   layers: [

@@ -1,7 +1,6 @@
 {
-  "name": "deckgl-particle",
-  "private": true,
-  "version": "1.0.0",
+  "name": "deckgl-particle-layer",
+  "version": "1.0.1",
   "author": "Junhao Tong <tjhao157@gmail.com>",
   "license": "MPL-2.0",
   "repository": {
