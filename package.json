@@ -1,0 +1,36 @@
+{
+  "name": "deckgl-particle",
+  "private": true,
+  "version": "1.0.0",
+  "author": "Junhao Tong <tjhao157@gmail.com>",
+  "license": "MPL-2.0",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build --mode production && npm run generate-typings",
+    "generate-typings": "api-extractor run --local && rimraf temp",
+    "preview": "vite preview"
+  },
+  "type": "commonjs",
+  "main": "dist/deckgl-particle.js",
+  "module": "dist/deckgl-particle.mjs",
+  "typings": "dist/deckgl-particle.d.ts",
+  "devDependencies": {
+    "@microsoft/api-extractor": "^7.25.0",
+    "rimraf": "^3.0.2",
+    "typescript": "^4.5.4",
+    "vite": "^2.9.9",
+    "vite-dts": "^1.0.4",
+    "vite-plugin-dts": "^1.2.0"
+  },
+  "dependencies": {
+    "@danmarshall/deckgl-typings": "^4.9.24",
+    "@deck.gl/core": "^8.7.11",
+    "@deck.gl/layers": "^8.7.11",
+    "@turf/distance": "^6.5.0",
+    "maplibre-gl": "^2.1.9"
+  }
+}
