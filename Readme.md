@@ -21,11 +21,12 @@ const deckgl = new Deck({
         numParticles: 5000,
         maxAge: 50,
         speedFactor: 0.3,
-        uWindMin: -21.32,
+        uWindMin: -21.32,  // min and max windUV, form .json file, like this [link](https://mapbox.github.io/webgl-wind/demo/wind/2016112000.json)
         uWindMax: 26.8,
         vWindMin: -21.57,
         vWindMax: 21.42,
-        boundsClip: false,
+        bounds: [-180, -90, 180, 90], // bounds for wind, default is [-180, -90, 180, 90]
+        boundsClip: false,  // enable clip bounds, for part wind
         width: 2,
         opacity: 1,
         animate: true,
@@ -38,7 +39,7 @@ const deckgl = new Deck({
             0.5: '#fdae61',
             0.6: '#f46d43',
             1.0: '#d53e4f'
-        }
+        }  // colors for different speed
     });
   ],
   _animate: true,
