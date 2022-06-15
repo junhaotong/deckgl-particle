@@ -1,6 +1,9 @@
 # deckgl-particle
 
 Particle layer for deck.gl, based on [deck.gl-particle](https://github.com/weatherlayers/deck.gl-particle)
+<br/>
+Typescript version, with d.ts
+
 ## demo
 - [Global wind demo](https://junhaotong.github.io/deckgl-particle/)
 - [Part wind demo](https://junhaotong.github.io/deckgl-particle/part-wind.html)
@@ -47,3 +50,8 @@ const deckgl = new Deck({
 ```
 
 Requires WebGL 2 (Chrome, Firefox, Edge, Safari 15).
+
+## Thanks
+ - [deck.gl-particle](https://github.com/weatherlayers/deck.gl-particle)
+ - [How I built a wind map with WebGL](https://blog.mapbox.com/how-i-built-a-wind-map-with-webgl-b63022b5537f)
+ - [webgl-wind](https://github.com/mapbox/webgl-wind)
