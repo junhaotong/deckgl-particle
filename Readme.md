@@ -11,7 +11,7 @@ Particle layer for deck.gl, based on [deck.gl-particle](https://github.com/weath
 
 ```
 import { Deck } from '@deck.gl/core';
-import { ParticleLayer } from 'deck.gl-particle';
+import { ParticleLayer } from 'deckgl-particle';
 
 const deckgl = new Deck({
   layers: [
