@@ -30,7 +30,6 @@
     "@danmarshall/deckgl-typings": "^4.9.24",
     "@deck.gl/core": "^8.7.11",
     "@deck.gl/layers": "^8.7.11",
-    "@turf/distance": "^6.5.0",
-    "maplibre-gl": "^2.1.9"
+    "@turf/distance": "^6.5.0"
   }
 }
