@@ -3,10 +3,7 @@
   "version": "1.0.2",
   "author": "Junhao Tong <tjhao157@gmail.com>",
   "license": "MPL-2.0",
-  "repository": {
-    "type": "git",
-    "url": ""
-  },
+  "repository": "github:junhaotong/deckgl-particle",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build --mode production && npm run generate-typings",
