@@ -967,7 +967,7 @@ class ParticleLayer extends LineLayer {
     super.finalizeState();
   }
   draw({ uniforms }) {
-    const { animate, image, bounds, uWindMin, uWindMax, vWindMin, vWindMax } = this.props || defaultProps;
+    const { animate, image, bounds, uWindMin, uWindMax, vWindMin, vWindMax } = this.props;
     const { sourcePositions, targetPositions, sourcePositions64Low, targetPositions64Low, widths, model, colorTexture, instanceColors } = this.state;
     if (animate) {
       this._runTransformFeedback();
@@ -1096,7 +1096,8 @@ class ParticleLayer extends LineLayer {
       targetPositions64Low: void 0,
       instanceColors: void 0,
       widths: void 0,
-      transform: void 0
+      transform: void 0,
+      colorTexture: void 0
     });
   }
   step() {

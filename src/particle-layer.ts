@@ -169,7 +169,7 @@ export class ParticleLayer<D = any, ExtraPropsT = any> extends LineLayer<D, Extr
     }
 
     draw({uniforms}: { uniforms: any }) {
-        const {animate, image, bounds, uWindMin, uWindMax, vWindMin, vWindMax} = this.props || defaultProps;
+        const {animate, image, bounds, uWindMin, uWindMax, vWindMin, vWindMax} = this.props;
         const {sourcePositions, targetPositions, sourcePositions64Low, targetPositions64Low, widths, model, colorTexture, instanceColors} = this.state;
 
         if (animate) {
@@ -316,9 +316,6 @@ export class ParticleLayer<D = any, ExtraPropsT = any> extends LineLayer<D, Extr
         };
         transform.run({uniforms});
         transform.swap();
-
-        // const {sourcePositions, targetPositions} = this.state;
-        // console.log(uniforms, sourcePositions.getData().slice(0, 6), targetPositions.getData().slice(0, 6));
     }
 
     _deleteTransformFeedback() {
@@ -342,6 +339,7 @@ export class ParticleLayer<D = any, ExtraPropsT = any> extends LineLayer<D, Extr
             instanceColors: undefined,
             widths: undefined,
             transform: undefined,
+            colorTexture: undefined
         });
     }
 

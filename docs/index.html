@@ -112,15 +112,22 @@
                   })
         }
       }
-      map.on('movestart', () => {
-        config.particle.animate = false
-        update()
+      let updateState = false
+      map.on('movestart', (e) => {
+        if (!e.originalEvent || e.originalEvent.type !== 'resize') {
+          config.particle.animate = false
+          update()
+          updateState = true
+        } else updateState = false
       })
 
       map.on('moveend', () => {
-        if (layer) layer.clear()
-        config.particle.animate = true
-        update()
+        if (updateState) {
+          if (layer) layer.clear()
+          config.particle.animate = true
+          update()
+          updateState = false
+        }
       })
 
       map.on('move', () => {

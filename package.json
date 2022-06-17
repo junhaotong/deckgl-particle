@@ -5,10 +5,11 @@
   "license": "MPL-2.0",
   "repository": "github:junhaotong/deckgl-particle",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite build --watch",
     "build": "tsc && vite build --mode production && npm run generate-typings",
     "generate-typings": "api-extractor run --local && rimraf temp",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "prepublish": "npm run build"
   },
   "type": "commonjs",
   "main": "dist/deckgl-particle.umd.js",
