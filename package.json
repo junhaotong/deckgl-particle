@@ -19,7 +19,6 @@
     "rimraf": "^3.0.2",
     "typescript": "^4.5.4",
     "vite": "^2.9.9",
-    "vite-dts": "^1.0.4",
     "vite-plugin-dts": "^1.2.0"
   },
   "peerDependencies": {
