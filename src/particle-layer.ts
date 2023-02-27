@@ -1,11 +1,12 @@
-import {COORDINATE_SYSTEM} from '@deck.gl/core';
-import {LineLayer} from '@deck.gl/layers';
-import {Buffer, Transform, Texture2D} from '@luma.gl/core';
+import {COORDINATE_SYSTEM} from '@deck.gl/core/typed';
+import {LineLayer} from '@deck.gl/layers/typed';
+import {Transform} from '@luma.gl/engine';
+import {Buffer, Texture2D} from '@luma.gl/webgl';
 import GL from '@luma.gl/constants';
-import {LineLayerProps} from '@deck.gl/layers';
+import type {LineLayerProps} from '@deck.gl/layers/typed';
 import updateTransformVs from './particle-layer-update-transform.vs.glsl';
 import distance from '@turf/distance';
-import {UpdateStateInfo} from '@deck.gl/core/lib/layer';
+import type {UpdateParameters} from '@deck.gl/core/typed';
 
 /**
  * Bbox
@@ -136,7 +137,7 @@ export class ParticleLayer<D = any, ExtraPropsT = any> extends LineLayer<D, Extr
     }
 
     initializeState() {
-        super.initializeState({});
+        super.initializeState();
 
         this._setupTransformFeedback();
 
@@ -144,8 +145,8 @@ export class ParticleLayer<D = any, ExtraPropsT = any> extends LineLayer<D, Extr
         attributeManager?.remove(['instanceSourcePositions', 'instanceTargetPositions', 'instanceColors', 'instanceWidths']);
     }
 
-    updateState({props, oldProps, changeFlags}: UpdateStateInfo<ParticleLayerProps<D>>) {
-        super.updateState({props, oldProps, changeFlags} as UpdateStateInfo<ExtraPropsT & ParticleLayerProps<D>>);
+    updateState({props, oldProps, changeFlags}: UpdateParameters<this>) {
+        super.updateState({props, oldProps, changeFlags} as UpdateParameters<this>);
 
         if (
             props.image !== oldProps.image ||
@@ -164,8 +165,7 @@ export class ParticleLayer<D = any, ExtraPropsT = any> extends LineLayer<D, Extr
 
     finalizeState() {
         this._deleteTransformFeedback();
-
-        super.finalizeState();
+        // super.finalizeState();
     }
 
     draw({uniforms}: { uniforms: any }) {

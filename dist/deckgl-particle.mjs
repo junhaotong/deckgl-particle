@@ -1,26 +1,8 @@
-var __defProp = Object.defineProperty;
-var __defProps = Object.defineProperties;
-var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
-var __getOwnPropSymbols = Object.getOwnPropertySymbols;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __propIsEnum = Object.prototype.propertyIsEnumerable;
-var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __spreadValues = (a, b) => {
-  for (var prop in b || (b = {}))
-    if (__hasOwnProp.call(b, prop))
-      __defNormalProp(a, prop, b[prop]);
-  if (__getOwnPropSymbols)
-    for (var prop of __getOwnPropSymbols(b)) {
-      if (__propIsEnum.call(b, prop))
-        __defNormalProp(a, prop, b[prop]);
-    }
-  return a;
-};
-var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
-import { COORDINATE_SYSTEM } from "@deck.gl/core";
-import { LineLayer } from "@deck.gl/layers";
-import { Buffer as Buffer2, Transform, Texture2D } from "@luma.gl/core";
-var GL = {
+import { COORDINATE_SYSTEM as G } from "@deck.gl/core/typed";
+import { LineLayer as U } from "@deck.gl/layers/typed";
+import { Transform as u } from "@luma.gl/engine";
+import { Buffer as C, Texture2D as l } from "@luma.gl/webgl";
+const B = {
   DEPTH_BUFFER_BIT: 256,
   STENCIL_BUFFER_BIT: 1024,
   COLOR_BUFFER_BIT: 16384,
@@ -635,8 +617,7 @@ var GL = {
   TIME_ELAPSED_EXT: 35007,
   TIMESTAMP_EXT: 36392,
   GPU_DISJOINT_EXT: 36795
-};
-var updateTransformVs = `#version 300 es
+}, m = `#version 300 es
 #define SHADER_NAME particle-layer-update-transform-vertex-shader
 
 precision highp float;
@@ -799,72 +780,55 @@ void main() {
   }
 }
 `;
-var earthRadius = 63710088e-1;
-var factors = {
-  centimeters: earthRadius * 100,
-  centimetres: earthRadius * 100,
-  degrees: earthRadius / 111325,
-  feet: earthRadius * 3.28084,
-  inches: earthRadius * 39.37,
-  kilometers: earthRadius / 1e3,
-  kilometres: earthRadius / 1e3,
-  meters: earthRadius,
-  metres: earthRadius,
-  miles: earthRadius / 1609.344,
-  millimeters: earthRadius * 1e3,
-  millimetres: earthRadius * 1e3,
-  nauticalmiles: earthRadius / 1852,
+var A = 63710088e-1, b = {
+  centimeters: A * 100,
+  centimetres: A * 100,
+  degrees: A / 111325,
+  feet: A * 3.28084,
+  inches: A * 39.37,
+  kilometers: A / 1e3,
+  kilometres: A / 1e3,
+  meters: A,
+  metres: A,
+  miles: A / 1609.344,
+  millimeters: A * 1e3,
+  millimetres: A * 1e3,
+  nauticalmiles: A / 1852,
   radians: 1,
-  yards: earthRadius * 1.0936
+  yards: A * 1.0936
 };
-function radiansToLength(radians, units) {
-  if (units === void 0) {
-    units = "kilometers";
-  }
-  var factor = factors[units];
-  if (!factor) {
-    throw new Error(units + " units is invalid");
-  }
-  return radians * factor;
+function v(e, E) {
+  E === void 0 && (E = "kilometers");
+  var _ = b[E];
+  if (!_)
+    throw new Error(E + " units is invalid");
+  return e * _;
 }
-function degreesToRadians(degrees) {
-  var radians = degrees % 360;
-  return radians * Math.PI / 180;
+function O(e) {
+  var E = e % 360;
+  return E * Math.PI / 180;
 }
-function getCoord(coord) {
-  if (!coord) {
+function P(e) {
+  if (!e)
     throw new Error("coord is required");
+  if (!Array.isArray(e)) {
+    if (e.type === "Feature" && e.geometry !== null && e.geometry.type === "Point")
+      return e.geometry.coordinates;
+    if (e.type === "Point")
+      return e.coordinates;
   }
-  if (!Array.isArray(coord)) {
-    if (coord.type === "Feature" && coord.geometry !== null && coord.geometry.type === "Point") {
-      return coord.geometry.coordinates;
-    }
-    if (coord.type === "Point") {
-      return coord.coordinates;
-    }
-  }
-  if (Array.isArray(coord) && coord.length >= 2 && !Array.isArray(coord[0]) && !Array.isArray(coord[1])) {
-    return coord;
-  }
+  if (Array.isArray(e) && e.length >= 2 && !Array.isArray(e[0]) && !Array.isArray(e[1]))
+    return e;
   throw new Error("coord must be GeoJSON Point or an Array of numbers");
 }
-function distance(from, to, options) {
-  if (options === void 0) {
-    options = {};
-  }
-  var coordinates1 = getCoord(from);
-  var coordinates2 = getCoord(to);
-  var dLat = degreesToRadians(coordinates2[1] - coordinates1[1]);
-  var dLon = degreesToRadians(coordinates2[0] - coordinates1[0]);
-  var lat1 = degreesToRadians(coordinates1[1]);
-  var lat2 = degreesToRadians(coordinates2[1]);
-  var a = Math.pow(Math.sin(dLat / 2), 2) + Math.pow(Math.sin(dLon / 2), 2) * Math.cos(lat1) * Math.cos(lat2);
-  return radiansToLength(2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)), options.units);
+function d(e, E, _) {
+  _ === void 0 && (_ = {});
+  var R = P(e), T = P(E), x = O(T[1] - R[1]), n = O(T[0] - R[0]), t = O(R[1]), s = O(T[1]), i = Math.pow(Math.sin(x / 2), 2) + Math.pow(Math.sin(n / 2), 2) * Math.cos(t) * Math.cos(s);
+  return v(2 * Math.atan2(Math.sqrt(i), Math.sqrt(1 - i)), _.units);
 }
-const DEFAULT_TEXTURE_PARAMETERS = {
-  [GL.TEXTURE_WRAP_S]: GL.REPEAT
-};
-const DEFAULT_COLORS = {
+const X = {
+  [B.TEXTURE_WRAP_S]: B.REPEAT
+}, W = {
   0: "#3288bd",
   0.1: "#66c2a5",
   0.2: "#abdda4",
@@ -873,35 +837,33 @@ const DEFAULT_COLORS = {
   0.5: "#fdae61",
   0.6: "#f46d43",
   1: "#d53e4f"
-};
-const clipBox = (bbox1, bbox2) => {
-  return [
-    Math.max(bbox1[0], bbox2[0]),
-    Math.max(bbox1[1], bbox2[1]),
-    Math.min(bbox1[2], bbox2[2]),
-    Math.min(bbox1[3], bbox2[3])
-  ];
-};
-const defaultProps = __spreadProps(__spreadValues({}, LineLayer.defaultProps), {
-  image: { type: "image", value: null, async: true },
-  bounds: { type: "array", value: [-180, -90, 180, 90], compare: true },
-  _imageCoordinateSystem: COORDINATE_SYSTEM.LNGLAT,
-  textureParameters: DEFAULT_TEXTURE_PARAMETERS,
+}, p = (e, E) => [
+  Math.max(e[0], E[0]),
+  Math.max(e[1], E[1]),
+  Math.min(e[2], E[2]),
+  Math.min(e[3], E[3])
+], H = {
+  ...U.defaultProps,
+  image: { type: "image", value: null, async: !0 },
+  bounds: { type: "array", value: [-180, -90, 180, 90], compare: !0 },
+  _imageCoordinateSystem: G.LNGLAT,
+  textureParameters: X,
   numParticles: { type: "number", min: 1, max: 1e6, value: 5e3 },
   maxAge: { type: "number", min: 1, max: 255, value: 100 },
   speedFactor: { type: "number", min: 0, max: 1, value: 1 },
-  colors: { type: "object", value: DEFAULT_COLORS },
+  colors: { type: "object", value: W },
   width: { type: "number", value: 1 },
   uWindMin: { type: "number", value: 0 },
   uWindMax: { type: "number", value: 0 },
   vWindMin: { type: "number", value: 0 },
   vWindMax: { type: "number", value: 0 },
-  animate: true,
-  boundsClip: { type: "boolean", value: false }
-});
-class ParticleLayer extends LineLayer {
+  animate: !0,
+  boundsClip: { type: "boolean", value: !1 }
+};
+class D extends U {
   getShaders() {
-    return __spreadProps(__spreadValues({}, super.getShaders()), {
+    return {
+      ...super.getShaders(),
       inject: {
         "vs:#decl": `
           varying float drop;
@@ -948,148 +910,106 @@ class ParticleLayer extends LineLayer {
           gl_FragColor = vec4(texture2D(colorTexture, vec2(colorPos, 0.)).rgb, gl_FragColor.a);
         `
       }
-    });
+    };
   }
   initializeState() {
-    super.initializeState({});
-    this._setupTransformFeedback();
-    const attributeManager = this.getAttributeManager();
-    attributeManager == null ? void 0 : attributeManager.remove(["instanceSourcePositions", "instanceTargetPositions", "instanceColors", "instanceWidths"]);
+    super.initializeState(), this._setupTransformFeedback();
+    const E = this.getAttributeManager();
+    E == null || E.remove(["instanceSourcePositions", "instanceTargetPositions", "instanceColors", "instanceWidths"]);
   }
-  updateState({ props, oldProps, changeFlags }) {
-    super.updateState({ props, oldProps, changeFlags });
-    if (props.image !== oldProps.image || props.numParticles !== oldProps.numParticles || props.maxAge !== oldProps.maxAge || props.colors !== oldProps.colors || props.width !== oldProps.width || props.uWindMin !== oldProps.uWindMin || props.uWindMax !== oldProps.uWindMax || props.vWindMin !== oldProps.vWindMin || props.vWindMax !== oldProps.vWindMax) {
-      this._setupTransformFeedback();
-    }
+  updateState({ props: E, oldProps: _, changeFlags: R }) {
+    super.updateState({ props: E, oldProps: _, changeFlags: R }), (E.image !== _.image || E.numParticles !== _.numParticles || E.maxAge !== _.maxAge || E.colors !== _.colors || E.width !== _.width || E.uWindMin !== _.uWindMin || E.uWindMax !== _.uWindMax || E.vWindMin !== _.vWindMin || E.vWindMax !== _.vWindMax) && this._setupTransformFeedback();
   }
   finalizeState() {
     this._deleteTransformFeedback();
-    super.finalizeState();
   }
-  draw({ uniforms }) {
-    const { animate, image, bounds, uWindMin, uWindMax, vWindMin, vWindMax } = this.props;
-    const { sourcePositions, targetPositions, sourcePositions64Low, targetPositions64Low, widths, model, colorTexture, instanceColors } = this.state;
-    if (animate) {
-      this._runTransformFeedback();
-    }
-    model.setAttributes({
-      instanceSourcePositions: sourcePositions,
-      instanceTargetPositions: targetPositions,
-      instanceSourcePositions64Low: sourcePositions64Low,
-      instanceTargetPositions64Low: targetPositions64Low,
-      instanceColors,
-      instanceWidths: widths
-    });
-    model.setUniforms({
-      uWind: image,
-      colorTexture,
-      bounds,
-      uWindMin,
-      uWindMax,
-      vWindMin,
-      vWindMax
-    });
-    super.draw({ uniforms });
-    this.setNeedsRedraw();
+  draw({ uniforms: E }) {
+    const { animate: _, image: R, bounds: T, uWindMin: x, uWindMax: n, vWindMin: t, vWindMax: s } = this.props, { sourcePositions: i, targetPositions: a, sourcePositions64Low: I, targetPositions64Low: N, widths: r, model: o, colorTexture: S, instanceColors: M } = this.state;
+    _ && this._runTransformFeedback(), o.setAttributes({
+      instanceSourcePositions: i,
+      instanceTargetPositions: a,
+      instanceSourcePositions64Low: I,
+      instanceTargetPositions64Low: N,
+      instanceColors: M,
+      instanceWidths: r
+    }), o.setUniforms({
+      uWind: R,
+      colorTexture: S,
+      bounds: T,
+      uWindMin: x,
+      uWindMax: n,
+      vWindMin: t,
+      vWindMax: s
+    }), super.draw({ uniforms: E }), this.setNeedsRedraw();
   }
   _setupTransformFeedback() {
-    const { gl } = this.context;
-    const { numParticles, maxAge, colors, width } = this.props;
-    const { initialized } = this.state;
-    if (initialized) {
-      this._deleteTransformFeedback();
-    }
-    const numInstances = numParticles * maxAge;
-    const numAgedInstances = numParticles * (maxAge - 1);
-    const sourcePositions = new Buffer2(gl, new Float32Array(numInstances * 3));
-    const targetPositions = new Buffer2(gl, new Float32Array(numInstances * 3));
-    const sourcePositions64Low = new Float32Array([0, 0, 0]);
-    const targetPositions64Low = new Float32Array([0, 0, 0]);
-    const instanceColors = new Buffer2(gl, new Float32Array(new Array(numInstances).fill(void 0).map((_, i) => {
-      const age = Math.floor(i / numParticles);
-      return [255, 255, 255, 255 * (1 - age / maxAge)].map((d) => d / 255);
-    }).flat()));
-    const widths = new Float32Array([width]);
-    const transform = new Transform(gl, {
+    const { gl: E } = this.context, { numParticles: _, maxAge: R, colors: T, width: x } = this.props, { initialized: n } = this.state;
+    n && this._deleteTransformFeedback();
+    const t = _ * R, s = _ * (R - 1), i = new C(E, new Float32Array(t * 3)), a = new C(E, new Float32Array(t * 3)), I = new Float32Array([0, 0, 0]), N = new Float32Array([0, 0, 0]), r = new C(E, new Float32Array(new Array(t).fill(void 0).map((c, F) => [255, 255, 255, 255 * (1 - Math.floor(F / _) / R)].map((f) => f / 255)).flat())), o = new Float32Array([x]), S = new u(E, {
       sourceBuffers: {
-        sourcePosition: sourcePositions
+        sourcePosition: i
       },
       feedbackBuffers: {
-        targetPosition: targetPositions
+        targetPosition: a
       },
       feedbackMap: {
         sourcePosition: "targetPosition"
       },
-      vs: updateTransformVs,
-      elementCount: numInstances
-    });
-    const colorTexture = new Texture2D(gl, {
-      data: this.getColorRamp(colors)
+      vs: m,
+      elementCount: t
+    }), M = new l(E, {
+      data: this.getColorRamp(T)
     });
     this.setState({
-      initialized: true,
-      numInstances,
-      numAgedInstances,
-      sourcePositions,
-      targetPositions,
-      sourcePositions64Low,
-      targetPositions64Low,
-      instanceColors,
-      widths,
-      transform,
-      colorTexture
+      initialized: !0,
+      numInstances: t,
+      numAgedInstances: s,
+      sourcePositions: i,
+      targetPositions: a,
+      sourcePositions64Low: I,
+      targetPositions64Low: N,
+      instanceColors: r,
+      widths: o,
+      transform: S,
+      colorTexture: M
     });
   }
   _runTransformFeedback() {
-    const { viewport, timeline } = this.context;
-    const { image, bounds, numParticles, speedFactor, maxAge, boundsClip } = this.props;
-    const { numAgedInstances, transform } = this.state;
-    if (!image) {
+    const { viewport: E, timeline: _ } = this.context, { image: R, bounds: T, numParticles: x, speedFactor: n, maxAge: t, boundsClip: s } = this.props, { numAgedInstances: i, transform: a } = this.state;
+    if (!R)
       return;
-    }
-    const viewportSphere = viewport.resolution ? 1 : 0;
-    const viewportSphereCenter = [viewport.longitude, viewport.latitude];
-    const viewportSphereRadius = Math.max(distance(viewportSphereCenter, viewport.unproject([0, 0]), { units: "meters" }), distance(viewportSphereCenter, viewport.unproject([viewport.width / 2, 0]), { units: "meters" }), distance(viewportSphereCenter, viewport.unproject([0, viewport.height / 2]), { units: "meters" }));
-    const viewportBounds = viewport.getBounds();
-    viewportBounds[1] = Math.max(viewportBounds[1], -85.051129);
-    viewportBounds[3] = Math.min(viewportBounds[3], 85.051129);
-    const devicePixelRatio = window.devicePixelRatio;
-    const viewportSpeedFactor = speedFactor * devicePixelRatio / 2 ** viewport.zoom;
-    const sourcePositions = transform.bufferTransform.bindings[transform.bufferTransform.currentIndex].sourceBuffers.sourcePosition;
-    const targetPositions = transform.bufferTransform.bindings[transform.bufferTransform.currentIndex].feedbackBuffers.targetPosition;
-    sourcePositions.copyData({
-      sourceBuffer: targetPositions,
+    const I = E.resolution ? 1 : 0, N = [E.longitude, E.latitude], r = Math.max(
+      d(N, E.unproject([0, 0]), { units: "meters" }),
+      d(N, E.unproject([E.width / 2, 0]), { units: "meters" }),
+      d(N, E.unproject([0, E.height / 2]), { units: "meters" })
+    ), o = E.getBounds();
+    o[1] = Math.max(o[1], -85.051129), o[3] = Math.min(o[3], 85.051129);
+    const S = window.devicePixelRatio, M = n * S / 2 ** E.zoom, c = a.bufferTransform.bindings[a.bufferTransform.currentIndex].sourceBuffers.sourcePosition, F = a.bufferTransform.bindings[a.bufferTransform.currentIndex].feedbackBuffers.targetPosition;
+    c.copyData({
+      sourceBuffer: F,
       readOffset: 0,
-      writeOffset: numParticles * 4 * 3,
-      size: numAgedInstances * 4 * 3
+      writeOffset: x * 4 * 3,
+      size: i * 4 * 3
     });
-    const uniforms = {
-      speedTexture: image,
-      bounds,
-      numParticles,
-      maxAge,
-      viewportSphere,
-      viewportSphereCenter,
-      viewportSphereRadius,
-      viewportBounds: boundsClip ? clipBox(viewportBounds, bounds) : viewportBounds,
-      viewportSpeedFactor,
-      time: timeline.getTime(),
+    const L = {
+      speedTexture: R,
+      bounds: T,
+      numParticles: x,
+      maxAge: t,
+      viewportSphere: I,
+      viewportSphereCenter: N,
+      viewportSphereRadius: r,
+      viewportBounds: s ? p(o, T) : o,
+      viewportSpeedFactor: M,
+      time: _.getTime(),
       seed: Math.random()
     };
-    transform.run({ uniforms });
-    transform.swap();
+    a.run({ uniforms: L }), a.swap();
   }
   _deleteTransformFeedback() {
-    const { initialized, sourcePositions, targetPositions, instanceColors, transform } = this.state;
-    if (!initialized) {
-      return;
-    }
-    sourcePositions.delete();
-    targetPositions.delete();
-    instanceColors.delete();
-    transform.delete();
-    this.setState({
-      initialized: false,
+    const { initialized: E, sourcePositions: _, targetPositions: R, instanceColors: T, transform: x } = this.state;
+    E && (_.delete(), R.delete(), T.delete(), x.delete(), this.setState({
+      initialized: !1,
       sourcePositions: void 0,
       targetPositions: void 0,
       sourcePositions64Low: void 0,
@@ -1098,32 +1018,26 @@ class ParticleLayer extends LineLayer {
       widths: void 0,
       transform: void 0,
       colorTexture: void 0
-    });
+    }));
   }
   step() {
-    this._runTransformFeedback();
-    this.setNeedsRedraw();
+    this._runTransformFeedback(), this.setNeedsRedraw();
   }
   clear() {
-    const { numInstances, sourcePositions, targetPositions } = this.state;
-    sourcePositions.subData({ data: new Float32Array(numInstances * 3) });
-    targetPositions.subData({ data: new Float32Array(numInstances * 3) });
-    this.setNeedsRedraw();
+    const { numInstances: E, sourcePositions: _, targetPositions: R } = this.state;
+    _.subData({ data: new Float32Array(E * 3) }), R.subData({ data: new Float32Array(E * 3) }), this.setNeedsRedraw();
   }
-  getColorRamp(colors) {
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    canvas.width = 256;
-    canvas.height = 1;
-    const gradient = ctx.createLinearGradient(0, 0, 256, 0);
-    for (const stop in colors) {
-      gradient.addColorStop(+stop, colors[stop]);
-    }
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 256, 1);
-    return canvas.toDataURL();
+  getColorRamp(E) {
+    const _ = document.createElement("canvas"), R = _.getContext("2d");
+    _.width = 256, _.height = 1;
+    const T = R.createLinearGradient(0, 0, 256, 0);
+    for (const x in E)
+      T.addColorStop(+x, E[x]);
+    return R.fillStyle = T, R.fillRect(0, 0, 256, 1), _.toDataURL();
   }
 }
-ParticleLayer.layerName = "ParticleLayer";
-ParticleLayer.defaultProps = defaultProps;
-export { ParticleLayer };
+D.layerName = "ParticleLayer";
+D.defaultProps = H;
+export {
+  D as ParticleLayer
+};

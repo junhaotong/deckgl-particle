@@ -1,6 +1,6 @@
-import { LineLayer } from '@deck.gl/layers';
-import { LineLayerProps } from '@deck.gl/layers';
-import { UpdateStateInfo } from '@deck.gl/core/lib/layer';
+import { LineLayer } from '@deck.gl/layers/typed';
+import type { LineLayerProps } from '@deck.gl/layers/typed';
+import type { UpdateParameters } from '@deck.gl/core/typed';
 
 /**
  * Bbox
@@ -15,7 +15,7 @@ export declare type Bbox = [number, number, number, number];
 export declare class ParticleLayer<D = any, ExtraPropsT = any> extends LineLayer<D, ExtraPropsT & ParticleLayerProps<D>> {
     getShaders(): any;
     initializeState(): void;
-    updateState({ props, oldProps, changeFlags }: UpdateStateInfo<ParticleLayerProps<D>>): void;
+    updateState({ props, oldProps, changeFlags }: UpdateParameters<this>): void;
     finalizeState(): void;
     draw({ uniforms }: {
         uniforms: any;
