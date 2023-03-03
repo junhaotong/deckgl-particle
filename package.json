@@ -1,6 +1,6 @@
 {
   "name": "deckgl-particle-layer",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "author": "Junhao Tong <tjhao157@gmail.com>",
   "license": "MPL-2.0",
   "repository": "github:junhaotong/deckgl-particle",
@@ -14,7 +14,7 @@
   "type": "commonjs",
   "main": "dist/deckgl-particle.umd.js",
   "module": "dist/deckgl-particle.es.js",
-  "typings": "dist/deckgl-particle.d.ts",
+  "typings": "dist/deckgl-particle-layer.d.ts",
   "devDependencies": {
     "@types/node": "^18.14.2",
     "@microsoft/api-extractor": "^7.34.4",
