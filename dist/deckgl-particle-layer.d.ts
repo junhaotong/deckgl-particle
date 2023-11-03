@@ -44,6 +44,7 @@ export declare type ParticleLayerProps<D> = LineLayerProps<D> & {
     uWindMax?: number;
     vWindMin?: number;
     vWindMax?: number;
+    emptyData?: number;
     animate?: number;
     boundsClip?: boolean;
 };

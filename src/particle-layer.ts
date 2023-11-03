@@ -54,6 +54,7 @@ export type ParticleLayerProps<D> = LineLayerProps<D> & {
     uWindMax?: number;
     vWindMin?: number;
     vWindMax?: number;
+    emptyData?: number; // empty RG value, 0-255
     animate?: number;
     boundsClip?: boolean;
 }
@@ -72,6 +73,7 @@ const defaultProps = {
     colors: {type: 'object', value: DEFAULT_COLORS},
     width: {type: 'number', value: 1},
     uWindMin: {type: 'number', value: 0},
+    emptyData: {type: 'number', value: 0},
     uWindMax: {type: 'number', value: 0},
     vWindMin: {type: 'number', value: 0},
     vWindMax: {type: 'number', value: 0},
@@ -111,6 +113,7 @@ export class ParticleLayer<D = any, ExtraPropsT = any> extends LineLayer<D, Extr
           uniform float uWindMax;
           uniform float vWindMin;
           uniform float vWindMax;
+          uniform float emptyData;
           vec2 getUV(vec2 pos) {
             return vec2(
               (pos.x - bounds[0]) / (bounds[2] - bounds[0]),
@@ -125,12 +128,16 @@ export class ParticleLayer<D = any, ExtraPropsT = any> extends LineLayer<D, Extr
           vec2 windUV = getUV(positionWind.xy);
           vec2 windMax = vec2(uWindMax, vWindMax);
           vec2 windMin = vec2(uWindMin, vWindMin);
-          vec2 velocity = mix(windMin, windMax, texture2D(uWind, windUV).xy);
+          vec2 windXY = texture2D(uWind, windUV).xy;
+          vec2 velocity = mix(windMin, windMax, windXY);
           float speed = length(velocity);
           float maxSpeed = length(windMax);
           float colorPos = speed / maxSpeed;
-
-          gl_FragColor = vec4(texture2D(colorTexture, vec2(colorPos, 0.)).rgb, gl_FragColor.a);
+          if (windXY.x == emptyData && windXY.y == emptyData) {
+            gl_FragColor.a = 0.;
+          } else {
+            gl_FragColor = vec4(texture2D(colorTexture, vec2(colorPos, 0.)).rgb, gl_FragColor.a);
+          }
         `
             },
         };
@@ -155,6 +162,7 @@ export class ParticleLayer<D = any, ExtraPropsT = any> extends LineLayer<D, Extr
             props.colors !== oldProps.colors ||
             props.width !== oldProps.width ||
             props.uWindMin !== oldProps.uWindMin ||
+            props.emptyData !== oldProps.emptyData ||
             props.uWindMax !== oldProps.uWindMax ||
             props.vWindMin !== oldProps.vWindMin ||
             props.vWindMax !== oldProps.vWindMax
@@ -169,7 +177,7 @@ export class ParticleLayer<D = any, ExtraPropsT = any> extends LineLayer<D, Extr
     }
 
     draw({uniforms}: { uniforms: any }) {
-        const {animate, image, bounds, uWindMin, uWindMax, vWindMin, vWindMax} = this.props;
+        const {animate, image, bounds, uWindMin, uWindMax, vWindMin, vWindMax, emptyData = 0} = this.props;
         const {sourcePositions, targetPositions, sourcePositions64Low, targetPositions64Low, widths, model, colorTexture, instanceColors} = this.state;
 
         if (animate) {
@@ -187,6 +195,7 @@ export class ParticleLayer<D = any, ExtraPropsT = any> extends LineLayer<D, Extr
 
         model.setUniforms({
             uWind: image,
+            emptyData: emptyData / 255,
             colorTexture,
             bounds,
             uWindMin,
@@ -194,7 +203,6 @@ export class ParticleLayer<D = any, ExtraPropsT = any> extends LineLayer<D, Extr
             vWindMin,
             vWindMax
         })
-
         super.draw({uniforms});
         this.setNeedsRedraw();
     }
@@ -252,7 +260,7 @@ export class ParticleLayer<D = any, ExtraPropsT = any> extends LineLayer<D, Extr
             instanceColors,
             widths,
             transform,
-            colorTexture
+            colorTexture,
         });
     }
 

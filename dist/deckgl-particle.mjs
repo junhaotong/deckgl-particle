@@ -1,5 +1,5 @@
 import { COORDINATE_SYSTEM as G } from "@deck.gl/core/typed";
-import { LineLayer as U } from "@deck.gl/layers/typed";
+import { LineLayer as P } from "@deck.gl/layers/typed";
 import { Transform as u } from "@luma.gl/engine";
 import { Buffer as C, Texture2D as l } from "@luma.gl/webgl";
 const B = {
@@ -804,11 +804,11 @@ function v(e, E) {
     throw new Error(E + " units is invalid");
   return e * _;
 }
-function O(e) {
+function F(e) {
   var E = e % 360;
   return E * Math.PI / 180;
 }
-function P(e) {
+function U(e) {
   if (!e)
     throw new Error("coord is required");
   if (!Array.isArray(e)) {
@@ -821,14 +821,14 @@ function P(e) {
     return e;
   throw new Error("coord must be GeoJSON Point or an Array of numbers");
 }
-function d(e, E, _) {
+function c(e, E, _) {
   _ === void 0 && (_ = {});
-  var R = P(e), T = P(E), x = O(T[1] - R[1]), n = O(T[0] - R[0]), t = O(R[1]), s = O(T[1]), i = Math.pow(Math.sin(x / 2), 2) + Math.pow(Math.sin(n / 2), 2) * Math.cos(t) * Math.cos(s);
-  return v(2 * Math.atan2(Math.sqrt(i), Math.sqrt(1 - i)), _.units);
+  var R = U(e), T = U(E), x = F(T[1] - R[1]), N = F(T[0] - R[0]), t = F(R[1]), r = F(T[1]), o = Math.pow(Math.sin(x / 2), 2) + Math.pow(Math.sin(N / 2), 2) * Math.cos(t) * Math.cos(r);
+  return v(2 * Math.atan2(Math.sqrt(o), Math.sqrt(1 - o)), _.units);
 }
 const X = {
   [B.TEXTURE_WRAP_S]: B.REPEAT
-}, W = {
+}, p = {
   0: "#3288bd",
   0.1: "#66c2a5",
   0.2: "#abdda4",
@@ -837,13 +837,13 @@ const X = {
   0.5: "#fdae61",
   0.6: "#f46d43",
   1: "#d53e4f"
-}, p = (e, E) => [
+}, W = (e, E) => [
   Math.max(e[0], E[0]),
   Math.max(e[1], E[1]),
   Math.min(e[2], E[2]),
   Math.min(e[3], E[3])
 ], H = {
-  ...U.defaultProps,
+  ...P.defaultProps,
   image: { type: "image", value: null, async: !0 },
   bounds: { type: "array", value: [-180, -90, 180, 90], compare: !0 },
   _imageCoordinateSystem: G.LNGLAT,
@@ -851,16 +851,17 @@ const X = {
   numParticles: { type: "number", min: 1, max: 1e6, value: 5e3 },
   maxAge: { type: "number", min: 1, max: 255, value: 100 },
   speedFactor: { type: "number", min: 0, max: 1, value: 1 },
-  colors: { type: "object", value: W },
+  colors: { type: "object", value: p },
   width: { type: "number", value: 1 },
   uWindMin: { type: "number", value: 0 },
+  emptyData: { type: "number", value: 0 },
   uWindMax: { type: "number", value: 0 },
   vWindMin: { type: "number", value: 0 },
   vWindMax: { type: "number", value: 0 },
   animate: !0,
   boundsClip: { type: "boolean", value: !1 }
 };
-class D extends U {
+class D extends P {
   getShaders() {
     return {
       ...super.getShaders(),
@@ -888,6 +889,7 @@ class D extends U {
           uniform float uWindMax;
           uniform float vWindMin;
           uniform float vWindMax;
+          uniform float emptyData;
           vec2 getUV(vec2 pos) {
             return vec2(
               (pos.x - bounds[0]) / (bounds[2] - bounds[0]),
@@ -902,12 +904,16 @@ class D extends U {
           vec2 windUV = getUV(positionWind.xy);
           vec2 windMax = vec2(uWindMax, vWindMax);
           vec2 windMin = vec2(uWindMin, vWindMin);
-          vec2 velocity = mix(windMin, windMax, texture2D(uWind, windUV).xy);
+          vec2 windXY = texture2D(uWind, windUV).xy;
+          vec2 velocity = mix(windMin, windMax, windXY);
           float speed = length(velocity);
           float maxSpeed = length(windMax);
           float colorPos = speed / maxSpeed;
-
-          gl_FragColor = vec4(texture2D(colorTexture, vec2(colorPos, 0.)).rgb, gl_FragColor.a);
+          if (windXY.x == emptyData && windXY.y == emptyData) {
+            gl_FragColor.a = 0.;
+          } else {
+            gl_FragColor = vec4(texture2D(colorTexture, vec2(colorPos, 0.)).rgb, gl_FragColor.a);
+          }
         `
       }
     };
@@ -918,36 +924,37 @@ class D extends U {
     E == null || E.remove(["instanceSourcePositions", "instanceTargetPositions", "instanceColors", "instanceWidths"]);
   }
   updateState({ props: E, oldProps: _, changeFlags: R }) {
-    super.updateState({ props: E, oldProps: _, changeFlags: R }), (E.image !== _.image || E.numParticles !== _.numParticles || E.maxAge !== _.maxAge || E.colors !== _.colors || E.width !== _.width || E.uWindMin !== _.uWindMin || E.uWindMax !== _.uWindMax || E.vWindMin !== _.vWindMin || E.vWindMax !== _.vWindMax) && this._setupTransformFeedback();
+    super.updateState({ props: E, oldProps: _, changeFlags: R }), (E.image !== _.image || E.numParticles !== _.numParticles || E.maxAge !== _.maxAge || E.colors !== _.colors || E.width !== _.width || E.uWindMin !== _.uWindMin || E.emptyData !== _.emptyData || E.uWindMax !== _.uWindMax || E.vWindMin !== _.vWindMin || E.vWindMax !== _.vWindMax) && this._setupTransformFeedback();
   }
   finalizeState() {
     this._deleteTransformFeedback();
   }
   draw({ uniforms: E }) {
-    const { animate: _, image: R, bounds: T, uWindMin: x, uWindMax: n, vWindMin: t, vWindMax: s } = this.props, { sourcePositions: i, targetPositions: a, sourcePositions64Low: I, targetPositions64Low: N, widths: r, model: o, colorTexture: S, instanceColors: M } = this.state;
-    _ && this._runTransformFeedback(), o.setAttributes({
-      instanceSourcePositions: i,
-      instanceTargetPositions: a,
-      instanceSourcePositions64Low: I,
-      instanceTargetPositions64Low: N,
-      instanceColors: M,
-      instanceWidths: r
-    }), o.setUniforms({
+    const { animate: _, image: R, bounds: T, uWindMin: x, uWindMax: N, vWindMin: t, vWindMax: r, emptyData: o = 0 } = this.props, { sourcePositions: a, targetPositions: s, sourcePositions64Low: n, targetPositions64Low: S, widths: i, model: I, colorTexture: M, instanceColors: O } = this.state;
+    _ && this._runTransformFeedback(), I.setAttributes({
+      instanceSourcePositions: a,
+      instanceTargetPositions: s,
+      instanceSourcePositions64Low: n,
+      instanceTargetPositions64Low: S,
+      instanceColors: O,
+      instanceWidths: i
+    }), I.setUniforms({
       uWind: R,
-      colorTexture: S,
+      emptyData: o / 255,
+      colorTexture: M,
       bounds: T,
       uWindMin: x,
-      uWindMax: n,
+      uWindMax: N,
       vWindMin: t,
-      vWindMax: s
+      vWindMax: r
     }), super.draw({ uniforms: E }), this.setNeedsRedraw();
   }
   _setupTransformFeedback() {
-    const { gl: E } = this.context, { numParticles: _, maxAge: R, colors: T, width: x } = this.props, { initialized: n } = this.state;
-    n && this._deleteTransformFeedback();
-    const t = _ * R, s = _ * (R - 1), i = new C(E, new Float32Array(t * 3)), a = new C(E, new Float32Array(t * 3)), I = new Float32Array([0, 0, 0]), N = new Float32Array([0, 0, 0]), r = new C(E, new Float32Array(new Array(t).fill(void 0).map((c, F) => [255, 255, 255, 255 * (1 - Math.floor(F / _) / R)].map((f) => f / 255)).flat())), o = new Float32Array([x]), S = new u(E, {
+    const { gl: E } = this.context, { numParticles: _, maxAge: R, colors: T, width: x } = this.props, { initialized: N } = this.state;
+    N && this._deleteTransformFeedback();
+    const t = _ * R, r = _ * (R - 1), o = new C(E, new Float32Array(t * 3)), a = new C(E, new Float32Array(t * 3)), s = new Float32Array([0, 0, 0]), n = new Float32Array([0, 0, 0]), S = new C(E, new Float32Array(new Array(t).fill(void 0).map((O, d) => [255, 255, 255, 255 * (1 - Math.floor(d / _) / R)].map((f) => f / 255)).flat())), i = new Float32Array([x]), I = new u(E, {
       sourceBuffers: {
-        sourcePosition: i
+        sourcePosition: o
       },
       feedbackBuffers: {
         targetPosition: a
@@ -963,43 +970,43 @@ class D extends U {
     this.setState({
       initialized: !0,
       numInstances: t,
-      numAgedInstances: s,
-      sourcePositions: i,
+      numAgedInstances: r,
+      sourcePositions: o,
       targetPositions: a,
-      sourcePositions64Low: I,
-      targetPositions64Low: N,
-      instanceColors: r,
-      widths: o,
-      transform: S,
+      sourcePositions64Low: s,
+      targetPositions64Low: n,
+      instanceColors: S,
+      widths: i,
+      transform: I,
       colorTexture: M
     });
   }
   _runTransformFeedback() {
-    const { viewport: E, timeline: _ } = this.context, { image: R, bounds: T, numParticles: x, speedFactor: n, maxAge: t, boundsClip: s } = this.props, { numAgedInstances: i, transform: a } = this.state;
+    const { viewport: E, timeline: _ } = this.context, { image: R, bounds: T, numParticles: x, speedFactor: N, maxAge: t, boundsClip: r } = this.props, { numAgedInstances: o, transform: a } = this.state;
     if (!R)
       return;
-    const I = E.resolution ? 1 : 0, N = [E.longitude, E.latitude], r = Math.max(
-      d(N, E.unproject([0, 0]), { units: "meters" }),
-      d(N, E.unproject([E.width / 2, 0]), { units: "meters" }),
-      d(N, E.unproject([0, E.height / 2]), { units: "meters" })
-    ), o = E.getBounds();
-    o[1] = Math.max(o[1], -85.051129), o[3] = Math.min(o[3], 85.051129);
-    const S = window.devicePixelRatio, M = n * S / 2 ** E.zoom, c = a.bufferTransform.bindings[a.bufferTransform.currentIndex].sourceBuffers.sourcePosition, F = a.bufferTransform.bindings[a.bufferTransform.currentIndex].feedbackBuffers.targetPosition;
-    c.copyData({
-      sourceBuffer: F,
+    const s = E.resolution ? 1 : 0, n = [E.longitude, E.latitude], S = Math.max(
+      c(n, E.unproject([0, 0]), { units: "meters" }),
+      c(n, E.unproject([E.width / 2, 0]), { units: "meters" }),
+      c(n, E.unproject([0, E.height / 2]), { units: "meters" })
+    ), i = E.getBounds();
+    i[1] = Math.max(i[1], -85.051129), i[3] = Math.min(i[3], 85.051129);
+    const I = window.devicePixelRatio, M = N * I / 2 ** E.zoom, O = a.bufferTransform.bindings[a.bufferTransform.currentIndex].sourceBuffers.sourcePosition, d = a.bufferTransform.bindings[a.bufferTransform.currentIndex].feedbackBuffers.targetPosition;
+    O.copyData({
+      sourceBuffer: d,
       readOffset: 0,
       writeOffset: x * 4 * 3,
-      size: i * 4 * 3
+      size: o * 4 * 3
     });
     const L = {
       speedTexture: R,
       bounds: T,
       numParticles: x,
       maxAge: t,
-      viewportSphere: I,
-      viewportSphereCenter: N,
-      viewportSphereRadius: r,
-      viewportBounds: s ? p(o, T) : o,
+      viewportSphere: s,
+      viewportSphereCenter: n,
+      viewportSphereRadius: S,
+      viewportBounds: r ? W(i, T) : i,
       viewportSpeedFactor: M,
       time: _.getTime(),
       seed: Math.random()
