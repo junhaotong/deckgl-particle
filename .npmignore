@@ -1,0 +1,6 @@
+src/
+docs/
+yarn.lock
+stats.html
+node_modules/
+api-extractor.json

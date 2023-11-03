@@ -33,6 +33,7 @@ const deckgl = new Deck({
         width: 2,
         opacity: 1,
         animate: true,
+        emptyData: 0, // empty RG value, 0-255
         colors: {
             0.0: '#3288bd',
             0.1: '#66c2a5',
