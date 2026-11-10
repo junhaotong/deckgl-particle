@@ -1,6 +1,5 @@
 import {defineConfig} from 'vite'
 import {resolve} from 'path'
-import dts from 'vite-plugin-dts'
 import {visualizer} from 'rollup-plugin-visualizer';
 
 export default defineConfig({
@@ -27,8 +26,4 @@ export default defineConfig({
             }
         },
     },
-    plugins: [dts({
-        staticImport: true,
-        outputDir:  resolve(__dirname, 'temp'),
-    })],
 })
