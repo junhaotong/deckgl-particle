@@ -15,26 +15,16 @@ in vec3 sourcePosition;
 out vec3 targetPosition;
 
 uniform sampler2D speedTexture;
-uniform vec4 bounds;
 
-uniform float numParticles;
-uniform float maxAge;
-
-uniform float viewportSphere;
-uniform vec2 viewportSphereCenter;
-uniform float viewportSphereRadius;
-uniform vec4 viewportBounds;
-uniform float viewportSpeedFactor;
-
-uniform float time;
-uniform float seed;
+const float PI = 3.1415926535;
+const float EARTH_RADIUS = 6370972.0; // meters
 
 const vec2 DROP_POSITION = vec2(0);
 
 vec2 getUV(vec2 pos) {
   return vec2(
-    (pos.x - bounds[0]) / (bounds[2] - bounds[0]),
-    (pos.y - bounds[3]) / (bounds[1] - bounds[3])
+    (pos.x - particle.bounds[0]) / (particle.bounds[2] - particle.bounds[0]),
+    (pos.y - particle.bounds[3]) / (particle.bounds[1] - particle.bounds[3])
   );
 }
 
@@ -99,24 +89,24 @@ vec2 randVec2(vec2 seed) {
 vec2 randPosition(vec2 seed) {
   vec2 randomVec2 = randVec2(seed);
   
-  if (viewportSphere > 0.5) {
+  if (particle.viewportSphere > 0.5) {
     randomVec2.x += 0.0001; // prevent generating point in the center
-    float dist = sqrt(randomVec2.x) * viewportSphereRadius;
+    float dist = sqrt(randomVec2.x) * particle.viewportSphereRadius;
     float bearing = randomVec2.y * 360.;
-    return destinationPoint(viewportSphereCenter, dist, bearing);
+    return destinationPoint(particle.viewportSphereCenter, dist, bearing);
   } else {
-    vec2 viewportBoundsMin = viewportBounds.xy;
-    vec2 viewportBoundsMax = viewportBounds.zw;
+    vec2 viewportBoundsMin = particle.viewportBounds.xy;
+    vec2 viewportBoundsMax = particle.viewportBounds.zw;
     return mix(viewportBoundsMin, viewportBoundsMax, randomVec2);
   }
 }
 
 bool isPositionVisible(vec2 position) {
-  if (viewportSphere > 0.5) {
-    return distanceTo(viewportSphereCenter, position) <= viewportSphereRadius;
+  if (particle.viewportSphere > 0.5) {
+    return distanceTo(particle.viewportSphereCenter, position) <= particle.viewportSphereRadius;
   } else {
-    vec2 viewportBoundsMin = viewportBounds.xy;
-    vec2 viewportBoundsMax = viewportBounds.zw;
+    vec2 viewportBoundsMin = particle.viewportBounds.xy;
+    vec2 viewportBoundsMax = particle.viewportBounds.zw;
     return (
       viewportBoundsMin.x <= position.x && position.x <= viewportBoundsMax.x &&
       viewportBoundsMin.y <= position.y && position.y <= viewportBoundsMax.y
@@ -125,20 +115,18 @@ bool isPositionVisible(vec2 position) {
 }
 
 void main() {
-  float particleIndex = mod(float(gl_VertexID), numParticles);
-  float particleAge = floor(float(gl_VertexID) / numParticles);
+  // only the newest generation (age 0) is updated here, older generations are shifted by a buffer copy
+  float particleIndex = float(gl_VertexID);
+  targetPosition = vec3(0);
 
   if (sourcePosition.xy != DROP_POSITION) {
     // update position
     vec2 uv = getUV(sourcePosition.xy);
-    vec4 values = texture2D(speedTexture, uv);
+    vec4 values = texture(speedTexture, uv);
     vec2 speed = values.xy * 2. - 1.;
-    // float dist = sqrt(speed.x * speed.x + speed.y + speed.y) * viewportSpeedFactor * 10000.;
-    // float bearing = degrees(-atan2(speed.y, speed.x));
-    // targetPosition.xy = destinationPoint(sourcePosition.xy, dist, bearing);
-    float distortion = cos(radians(sourcePosition.y)); 
+    float distortion = cos(radians(sourcePosition.y));
     vec2 distortedSpeed = vec2(speed.x / distortion, speed.y);
-    vec2 offset = distortedSpeed * viewportSpeedFactor;
+    vec2 offset = distortedSpeed * particle.viewportSpeedFactor;
     targetPosition.xy = sourcePosition.xy + offset;
 
     if (values.a != 1.) {
@@ -151,21 +139,14 @@ void main() {
       targetPosition.xy = DROP_POSITION;
     }
 
-    if (particleAge < 1.) {
-      if (abs(mod(particleIndex, maxAge + 2.) - mod(time, maxAge + 2.)) < 1.) {
-        // drop by maxAge, +2 because only non-randomized pairs are rendered
-        targetPosition.xy = DROP_POSITION;
-      }
-    }
-  } else {
-    if (particleAge < 1.) {
-      // generate random position to prevent converging particles
-      vec2 randomSeed = vec2(particleIndex * seed / numParticles);
-      vec2 randomPosition = randPosition(randomSeed);
-      targetPosition.xy = randomPosition;
-    } else {
+    if (abs(mod(particleIndex, particle.maxAge + 2.) - mod(particle.time, particle.maxAge + 2.)) < 1.) {
+      // drop by maxAge, +2 because only non-randomized pairs are rendered
       targetPosition.xy = DROP_POSITION;
     }
+  } else {
+    // generate random position to prevent converging particles
+    vec2 randomSeed = vec2(particleIndex * particle.seed / particle.numParticles);
+    targetPosition.xy = randPosition(randomSeed);
   }
 }
 `;

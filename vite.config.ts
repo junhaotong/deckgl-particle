@@ -15,13 +15,14 @@ export default defineConfig({
         rollupOptions: {
             plugins: [visualizer()],
             // https://rollupjs.org/guide/en/#big-list-of-options
-            external: ['@deck.gl/core/typed', '@deck.gl/layers/typed', '@luma.gl/webgl', '@luma.gl/engine'],
+            external: ['@deck.gl/core', '@deck.gl/layers', '@luma.gl/core', '@luma.gl/engine', '@luma.gl/shadertools'],
             output: {
                 globals: {
-                    '@deck.gl/core/typed': 'deck',
-                    '@deck.gl/layers/typed': 'deck',
-                    '@luma.gl/webgl': 'luma',
-                    '@luma.gl/engine': 'luma'
+                    '@deck.gl/core': 'deck',
+                    '@deck.gl/layers': 'deck',
+                    '@luma.gl/core': 'luma',
+                    '@luma.gl/engine': 'luma',
+                    '@luma.gl/shadertools': 'luma'
                 }
             }
         },

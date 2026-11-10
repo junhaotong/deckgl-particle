@@ -10,6 +10,17 @@ Typescript version, with d.ts
 
 <img src="https://junhaotong.github.io/deckgl-particle/screen-shot.png" alt="Screenshot" width="640" height="320">
 
+## Install
+
+```
+npm install deckgl-particle-layer
+```
+
+| deckgl-particle-layer | deck.gl / luma.gl |
+|-----------------------|-------------------|
+| 2.x                   | 9.x (>= 9.1)      |
+| 1.x                   | 8.x               |
+
 ## Usage
 
 ```
@@ -44,7 +55,7 @@ const deckgl = new Deck({
             0.6: '#f46d43',
             1.0: '#d53e4f'
         }  // colors for different speed
-    });
+    })
   ],
   _animate: true,
 });
