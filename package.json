@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "vite build --watch",
     "build": "tsc && vite build --mode production && pnpm run generate-typings",
-    "generate-typings": "api-extractor run --local && rimraf temp",
+    "generate-typings": "tsc --noEmit false --emitDeclarationOnly --declarationMap false --outDir temp && api-extractor run --local && rimraf temp",
     "preview": "vite preview",
     "prepublish": "pnpm run build"
   },
@@ -28,21 +28,17 @@
     "@luma.gl/core": "^9.4.2",
     "@luma.gl/engine": "^9.4.2",
     "@luma.gl/shadertools": "^9.4.2",
-    "@microsoft/api-extractor": "^7.34.4",
+    "@microsoft/api-extractor": "^7.60.1",
     "@types/node": "^18.14.2",
     "rimraf": "^4.1.2",
     "rollup-plugin-visualizer": "^5.9.0",
     "typescript": "^5.9",
-    "vite": "^4.1.4",
-    "vite-plugin-dts": "^1.2.2"
+    "vite": "^4.1.4"
   },
   "dependencies": {
     "@turf/distance": "^6.5.0"
   },
   "pnpm": {
-    "overrides": {
-      "@microsoft/api-extractor": "7.34.4"
-    },
     "onlyBuiltDependencies": [
       "esbuild"
     ]

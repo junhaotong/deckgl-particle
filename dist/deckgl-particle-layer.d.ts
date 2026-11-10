@@ -54,7 +54,11 @@ export declare class ParticleLayer<D = any, ExtraPropsT extends {} = {}> extends
  */
 export declare type ParticleLayerProps<D = unknown> = _ParticleLayerProps & LineLayerProps<D>;
 
-declare type _ParticleLayerProps = {
+/**
+ * Props added by ParticleLayer
+ * @public
+ */
+export declare type _ParticleLayerProps = {
     /** wind image, u in the red channel, v in the green channel */
     image: string | TextureSource | null;
     bounds?: Bbox;

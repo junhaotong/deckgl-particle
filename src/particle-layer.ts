@@ -91,7 +91,11 @@ const clipBox = (bbox1: Bbox, bbox2: Bbox): Bbox => {
     ]
 }
 
-type _ParticleLayerProps = {
+/**
+ * Props added by ParticleLayer
+ * @public
+ */
+export type _ParticleLayerProps = {
     /** wind image, u in the red channel, v in the green channel */
     image: string | TextureSource | null;
     bounds?: Bbox;
