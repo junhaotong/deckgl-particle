@@ -1,12 +1,11 @@
-import {COORDINATE_SYSTEM} from '@deck.gl/core/typed';
-import {LineLayer} from '@deck.gl/layers/typed';
-import {Transform} from '@luma.gl/engine';
-import {Buffer, Texture2D} from '@luma.gl/webgl';
-import GL from '@luma.gl/constants';
-import type {LineLayerProps} from '@deck.gl/layers/typed';
+import {LineLayer} from '@deck.gl/layers';
+import {BufferTransform} from '@luma.gl/engine';
+import type {Buffer, Texture, SamplerProps} from '@luma.gl/core';
+import type {ShaderModule} from '@luma.gl/shadertools';
+import type {LineLayerProps} from '@deck.gl/layers';
+import type {DefaultProps, LayerContext, TextureSource, UpdateParameters} from '@deck.gl/core';
 import updateTransformVs from './particle-layer-update-transform.vs.glsl';
 import distance from '@turf/distance';
-import type {UpdateParameters} from '@deck.gl/core/typed';
 
 /**
  * Bbox
@@ -14,9 +13,63 @@ import type {UpdateParameters} from '@deck.gl/core/typed';
  */
 export type Bbox = [number, number, number, number]
 
-const DEFAULT_TEXTURE_PARAMETERS = {
-    [GL.TEXTURE_WRAP_S]: GL.REPEAT,
+const DEFAULT_TEXTURE_PARAMETERS: SamplerProps = {
+    addressModeU: 'repeat',
 }
+
+// uniforms of the particle update transform
+const transformUniformBlock = `\
+uniform particleUniforms {
+  vec4 bounds;
+  vec4 viewportBounds;
+  vec2 viewportSphereCenter;
+  float viewportSphereRadius;
+  float viewportSphere;
+  float viewportSpeedFactor;
+  float numParticles;
+  float maxAge;
+  float time;
+  float seed;
+} particle;
+`;
+
+const transformUniforms = {
+    name: 'particle',
+    vs: transformUniformBlock,
+    uniformTypes: {
+        bounds: 'vec4<f32>',
+        viewportBounds: 'vec4<f32>',
+        viewportSphereCenter: 'vec2<f32>',
+        viewportSphereRadius: 'f32',
+        viewportSphere: 'f32',
+        viewportSpeedFactor: 'f32',
+        numParticles: 'f32',
+        maxAge: 'f32',
+        time: 'f32',
+        seed: 'f32',
+    },
+} as const satisfies ShaderModule;
+
+// uniforms of the particle rendering
+const windUniformBlock = `\
+uniform windUniforms {
+  vec4 bounds;
+  vec2 windMin;
+  vec2 windMax;
+  float emptyData;
+} wind;
+`;
+
+const windUniforms = {
+    name: 'wind',
+    fs: windUniformBlock,
+    uniformTypes: {
+        bounds: 'vec4<f32>',
+        windMin: 'vec2<f32>',
+        windMax: 'vec2<f32>',
+        emptyData: 'f32',
+    },
+} as const satisfies ShaderModule;
 
 const DEFAULT_COLORS = {
     0.0: '#3288bd',
@@ -38,12 +91,9 @@ const clipBox = (bbox1: Bbox, bbox2: Bbox): Bbox => {
     ]
 }
 
-/**
- * ParticleLayerProps
- * @public
- */
-export type ParticleLayerProps<D> = LineLayerProps<D> & {
-    image: string;
+type _ParticleLayerProps = {
+    /** wind image, u in the red channel, v in the green channel */
+    image: string | TextureSource | null;
     bounds?: Bbox;
     numParticles?: number;
     maxAge?: number;
@@ -55,22 +105,26 @@ export type ParticleLayerProps<D> = LineLayerProps<D> & {
     vWindMin?: number;
     vWindMax?: number;
     emptyData?: number; // empty RG value, 0-255
-    animate?: number;
+    animate?: boolean;
     boundsClip?: boolean;
+    textureParameters?: SamplerProps;
 }
 
-const defaultProps = {
-    ...LineLayer.defaultProps,
+/**
+ * ParticleLayerProps
+ * @public
+ */
+export type ParticleLayerProps<D = unknown> = _ParticleLayerProps & LineLayerProps<D>;
 
+const defaultProps: DefaultProps<ParticleLayerProps> = {
     image: {type: 'image', value: null, async: true},
     bounds: {type: 'array', value: [-180, -90, 180, 90], compare: true},
-    _imageCoordinateSystem: COORDINATE_SYSTEM.LNGLAT,
-    textureParameters: DEFAULT_TEXTURE_PARAMETERS,
+    textureParameters: {type: 'object', value: DEFAULT_TEXTURE_PARAMETERS, compare: true, ignore: true},
 
     numParticles: {type: 'number', min: 1, max: 1000000, value: 5000},
     maxAge: {type: 'number', min: 1, max: 255, value: 100},
     speedFactor: {type: 'number', min: 0, max: 1, value: 1},
-    colors: {type: 'object', value: DEFAULT_COLORS},
+    colors: {type: 'object', value: DEFAULT_COLORS, compare: true},
     width: {type: 'number', value: 1},
     uWindMin: {type: 'number', value: 0},
     emptyData: {type: 'number', value: 0},
@@ -85,17 +139,33 @@ const defaultProps = {
  * ParticleLayer
  * @public
  */
-export class ParticleLayer<D = any, ExtraPropsT = any> extends LineLayer<D, ExtraPropsT & ParticleLayerProps<D>> {
+export class ParticleLayer<D = any, ExtraPropsT extends {} = {}> extends LineLayer<D, ExtraPropsT & Required<_ParticleLayerProps>> {
+    static layerName = 'ParticleLayer';
+    static defaultProps = defaultProps;
+
+    declare state: LineLayer['state'] & {
+        initialized?: boolean;
+        numInstances?: number;
+        numAgedInstances?: number;
+        sourcePositions?: Buffer;
+        targetPositions?: Buffer;
+        instanceColors?: Buffer;
+        transform?: BufferTransform;
+        colorTexture?: Texture;
+        frame?: number;
+    };
+
     getShaders() {
+        const parentShaders = super.getShaders();
+
         return {
-            ...super.getShaders(),
+            ...parentShaders,
+            modules: [...parentShaders.modules, windUniforms],
             inject: {
                 'vs:#decl': `
-          varying float drop;
-          varying vec2 positionWind;
+          out float drop;
+          out vec2 positionWind;
           const vec2 DROP_POSITION = vec2(0);
-        `,
-                'vs:main': `
         `,
                 'vs:#main-start': `
           drop = float(instanceSourcePositions.xy == DROP_POSITION || instanceTargetPositions.xy == DROP_POSITION);
@@ -104,20 +174,14 @@ export class ParticleLayer<D = any, ExtraPropsT = any> extends LineLayer<D, Extr
           positionWind = instanceTargetPositions.xy;
         `,
                 'fs:#decl': `
-          varying float drop;
-          varying vec2 positionWind;
-          uniform sampler2D uWind;
+          in float drop;
+          in vec2 positionWind;
+          uniform sampler2D windTexture;
           uniform sampler2D colorTexture;
-          uniform vec4 bounds;
-          uniform float uWindMin;
-          uniform float uWindMax;
-          uniform float vWindMin;
-          uniform float vWindMax;
-          uniform float emptyData;
           vec2 getUV(vec2 pos) {
             return vec2(
-              (pos.x - bounds[0]) / (bounds[2] - bounds[0]),
-              (pos.y - bounds[3]) / (bounds[1] - bounds[3])
+              (pos.x - wind.bounds[0]) / (wind.bounds[2] - wind.bounds[0]),
+              (pos.y - wind.bounds[3]) / (wind.bounds[1] - wind.bounds[3])
             );
           }
         `,
@@ -126,17 +190,15 @@ export class ParticleLayer<D = any, ExtraPropsT = any> extends LineLayer<D, Extr
         `,
                 'fs:#main-end': `
           vec2 windUV = getUV(positionWind.xy);
-          vec2 windMax = vec2(uWindMax, vWindMax);
-          vec2 windMin = vec2(uWindMin, vWindMin);
-          vec2 windXY = texture2D(uWind, windUV).xy;
-          vec2 velocity = mix(windMin, windMax, windXY);
+          vec2 windXY = texture(windTexture, windUV).xy;
+          vec2 velocity = mix(wind.windMin, wind.windMax, windXY);
           float speed = length(velocity);
-          float maxSpeed = length(windMax);
+          float maxSpeed = length(wind.windMax);
           float colorPos = speed / maxSpeed;
-          if (windXY.x == emptyData && windXY.y == emptyData) {
-            gl_FragColor.a = 0.;
+          if (windXY.x == wind.emptyData && windXY.y == wind.emptyData) {
+            fragColor.a = 0.;
           } else {
-            gl_FragColor = vec4(texture2D(colorTexture, vec2(colorPos, 0.)).rgb, gl_FragColor.a);
+            fragColor = vec4(texture(colorTexture, vec2(colorPos, 0.5)).rgb, fragColor.a);
           }
         `
             },
@@ -146,70 +208,97 @@ export class ParticleLayer<D = any, ExtraPropsT = any> extends LineLayer<D, Extr
     initializeState() {
         super.initializeState();
 
-        this._setupTransformFeedback();
-
-        const attributeManager = this.getAttributeManager();
-        attributeManager?.remove(['instanceSourcePositions', 'instanceTargetPositions', 'instanceColors', 'instanceWidths']);
+        // positions and colors are provided by the transform feedback buffers, not by the data accessors
+        const attributeManager = this.getAttributeManager()!;
+        attributeManager.remove(['instanceSourcePositions', 'instanceTargetPositions', 'instanceColors', 'instanceWidths']);
+        attributeManager.addInstanced({
+            instanceSourcePositions: {size: 3, type: 'float32', noAlloc: true},
+            instanceTargetPositions: {size: 3, type: 'float32', noAlloc: true},
+            instanceColors: {size: 4, type: 'float32', noAlloc: true},
+            // constant attributes
+            instanceSourcePositions64Low: {size: 3, type: 'float32', noAlloc: true},
+            instanceTargetPositions64Low: {size: 3, type: 'float32', noAlloc: true},
+            instanceWidths: {size: 1, type: 'float32', noAlloc: true},
+        });
     }
 
-    updateState({props, oldProps, changeFlags}: UpdateParameters<this>) {
-        super.updateState({props, oldProps, changeFlags} as UpdateParameters<this>);
+    updateState(params: UpdateParameters<this>) {
+        super.updateState(params);
+
+        const {props, oldProps} = params;
 
         if (
             props.image !== oldProps.image ||
             props.numParticles !== oldProps.numParticles ||
-            props.maxAge !== oldProps.maxAge ||
-            props.colors !== oldProps.colors ||
-            props.width !== oldProps.width ||
-            props.uWindMin !== oldProps.uWindMin ||
-            props.emptyData !== oldProps.emptyData ||
-            props.uWindMax !== oldProps.uWindMax ||
-            props.vWindMin !== oldProps.vWindMin ||
-            props.vWindMax !== oldProps.vWindMax
+            props.maxAge !== oldProps.maxAge
         ) {
             this._setupTransformFeedback();
         }
+
+        if (props.colors !== oldProps.colors || !this.state.colorTexture) {
+            this.state.colorTexture?.destroy();
+            this.setState({colorTexture: this._createColorTexture(props.colors)});
+        }
     }
 
-    finalizeState() {
+    finalizeState(context: LayerContext) {
         this._deleteTransformFeedback();
-        // super.finalizeState();
+        this.state.colorTexture?.destroy();
+
+        super.finalizeState(context);
     }
 
     draw({uniforms}: { uniforms: any }) {
-        const {animate, image, bounds, uWindMin, uWindMax, vWindMin, vWindMax, emptyData = 0} = this.props;
-        const {sourcePositions, targetPositions, sourcePositions64Low, targetPositions64Low, widths, model, colorTexture, instanceColors} = this.state;
+        const {initialized} = this.state;
+        if (!initialized) {
+            return;
+        }
+
+        const {animate, image, bounds, width, uWindMin, uWindMax, vWindMin, vWindMax, emptyData} = this.props;
+        const {model, colorTexture} = this.state;
+        if (!image || typeof image === 'string' || !model || !colorTexture) {
+            return;
+        }
 
         if (animate) {
             this._runTransformFeedback();
         }
 
+        const {sourcePositions, targetPositions, instanceColors} = this.state;
+
         model.setAttributes({
-            instanceSourcePositions: sourcePositions,
-            instanceTargetPositions: targetPositions,
-            instanceSourcePositions64Low: sourcePositions64Low,
-            instanceTargetPositions64Low: targetPositions64Low,
-            instanceColors,
-            instanceWidths: widths,
+            instanceSourcePositions: sourcePositions!,
+            instanceTargetPositions: targetPositions!,
+            instanceColors: instanceColors!,
+        });
+        model.setConstantAttributes({
+            instanceSourcePositions64Low: new Float32Array([0, 0, 0]),
+            instanceTargetPositions64Low: new Float32Array([0, 0, 0]),
+            instanceWidths: new Float32Array([width]),
+        });
+        model.shaderInputs.setProps({
+            wind: {
+                bounds,
+                windMin: [uWindMin, vWindMin],
+                windMax: [uWindMax, vWindMax],
+                emptyData: emptyData / 255,
+            },
+        });
+        model.setBindings({
+            windTexture: image as Texture,
+            colorTexture,
         });
 
-        model.setUniforms({
-            uWind: image,
-            emptyData: emptyData / 255,
-            colorTexture,
-            bounds,
-            uWindMin,
-            uWindMax,
-            vWindMin,
-            vWindMax
-        })
         super.draw({uniforms});
-        this.setNeedsRedraw();
+
+        if (animate) {
+            this.setNeedsRedraw();
+        }
     }
 
     _setupTransformFeedback() {
-        const {gl} = this.context;
-        const {numParticles, maxAge, colors, width} = this.props;
+        const {device} = this.context;
+        const {numParticles, maxAge} = this.props;
         const {initialized} = this.state;
 
         if (initialized) {
@@ -219,35 +308,36 @@ export class ParticleLayer<D = any, ExtraPropsT = any> extends LineLayer<D, Extr
         // sourcePositions/targetPositions buffer layout:
         // |          age0         |          age1         |          age2         |...|          ageN         |
         // |pos1,pos2,pos3,...,posN|pos1,pos2,pos3,...,posN|pos1,pos2,pos3,...,posN|...|pos1,pos2,pos3,...,posN|
-        const numInstances = numParticles! * maxAge!;
-        const numAgedInstances = numParticles! * (maxAge! - 1);
-        const sourcePositions = new Buffer(gl, new Float32Array(numInstances * 3));
-        const targetPositions = new Buffer(gl, new Float32Array(numInstances * 3));
-        const sourcePositions64Low = new Float32Array([0, 0, 0]); // constant attribute
-        const targetPositions64Low = new Float32Array([0, 0, 0]); // constant attribute
-        const instanceColors = new Buffer(gl, new Float32Array(new Array(numInstances).fill(undefined).map((_, i) => {
-            const age = Math.floor(i / numParticles!);
-            return [255, 255, 255, 255 * (1 - age / maxAge!)].map(d => d / 255);
-        }).flat()));
-        const widths = new Float32Array([width!]); // constant attribute
+        const numInstances = numParticles * maxAge;
+        const numAgedInstances = numParticles * (maxAge - 1);
+        const sourcePositions = device.createBuffer({data: new Float32Array(numInstances * 3)});
+        const targetPositions = device.createBuffer({data: new Float32Array(numInstances * 3)});
+        const colors = new Float32Array(numInstances * 4);
+        for (let i = 0; i < numInstances; i++) {
+            const age = Math.floor(i / numParticles);
+            colors[i * 4] = 1;
+            colors[i * 4 + 1] = 1;
+            colors[i * 4 + 2] = 1;
+            colors[i * 4 + 3] = 1 - age / maxAge;
+        }
+        const instanceColors = device.createBuffer({data: colors});
 
-        const transform = new Transform(gl, {
-            sourceBuffers: {
-                sourcePosition: sourcePositions
+        // only the newest generation (age0) is transformed, older generations are shifted by a buffer copy
+        const transform = new BufferTransform(device, {
+            attributes: {
+                sourcePosition: sourcePositions,
             },
+            bufferLayout: [
+                {name: 'sourcePosition', format: 'float32x3'},
+            ],
             feedbackBuffers: {
-                targetPosition: targetPositions
-            },
-            feedbackMap: {
-                sourcePosition: 'targetPosition',
+                targetPosition: targetPositions,
             },
             vs: updateTransformVs,
-            elementCount: numInstances,
+            varyings: ['targetPosition'],
+            modules: [transformUniforms],
+            vertexCount: numParticles,
         });
-
-        const colorTexture = new Texture2D(gl, {
-            data: this.getColorRamp(colors!)
-        })
 
         this.setState({
             initialized: true,
@@ -255,37 +345,38 @@ export class ParticleLayer<D = any, ExtraPropsT = any> extends LineLayer<D, Extr
             numAgedInstances,
             sourcePositions,
             targetPositions,
-            sourcePositions64Low,
-            targetPositions64Low,
             instanceColors,
-            widths,
             transform,
-            colorTexture,
+            frame: 0,
         });
     }
 
     _runTransformFeedback() {
-        // @ts-ignore
-        const {viewport, timeline} = this.context;
-        const {image, bounds, numParticles, speedFactor, maxAge, boundsClip} = this.props;
-        const {numAgedInstances, transform} = this.state;
-
-        if (!image) {
+        const {initialized} = this.state;
+        if (!initialized) {
             return;
         }
 
-        // @ts-ignore
-        const viewportSphere = viewport.resolution ? 1 : 0; // globe
-        // @ts-ignore
-        const viewportSphereCenter = [viewport.longitude, viewport.latitude];
+        const {device, viewport} = this.context;
+        const {image, bounds, numParticles, speedFactor, maxAge, boundsClip} = this.props;
+        const {numAgedInstances, transform, frame} = this.state;
+        const sourcePositions = this.state.sourcePositions!;
+        const targetPositions = this.state.targetPositions!;
+
+        if (!image || typeof image === 'string' || !transform) {
+            return;
+        }
+
+        const viewportSphere = (viewport as any).resolution ? 1 : 0; // globe
+        const {longitude, latitude} = viewport as unknown as {longitude: number, latitude: number};
+        const viewportSphereCenter = [longitude, latitude];
         const viewportSphereRadius = Math.max(
             distance(viewportSphereCenter, viewport.unproject([0, 0]), {units: 'meters'}),
             distance(viewportSphereCenter, viewport.unproject([viewport.width / 2, 0]), {units: 'meters'}),
             distance(viewportSphereCenter, viewport.unproject([0, viewport.height / 2]), {units: 'meters'}),
         );
 
-        // @ts-ignore
-        const viewportBounds = viewport.getBounds();
+        const viewportBounds = viewport.getBounds() as Bbox;
         // viewportBounds[0] = Math.max(viewportBounds[0], -180);
         viewportBounds[1] = Math.max(viewportBounds[1], -85.051129);
         // viewportBounds[2] = Math.min(viewportBounds[2], 180);
@@ -293,37 +384,55 @@ export class ParticleLayer<D = any, ExtraPropsT = any> extends LineLayer<D, Extr
 
         // speed factor for current zoom level
         const devicePixelRatio = window.devicePixelRatio;
-        const viewportSpeedFactor = speedFactor! * devicePixelRatio / 2 ** viewport.zoom;
+        const viewportSpeedFactor = speedFactor * devicePixelRatio / 2 ** viewport.zoom;
 
         // age particles
-        // copy age0-age(N-1) targetPositions to age1-ageN sourcePositions
-        const sourcePositions = transform.bufferTransform.bindings[transform.bufferTransform.currentIndex].sourceBuffers.sourcePosition;
-        const targetPositions = transform.bufferTransform.bindings[transform.bufferTransform.currentIndex].feedbackBuffers.targetPosition;
-        sourcePositions.copyData({
-            sourceBuffer: targetPositions,
-            readOffset: 0,
-            writeOffset: numParticles! * 4 * 3,
-            size: numAgedInstances * 4 * 3,
-        });
+        // copy age0-age(N-1) sourcePositions to age1-ageN targetPositions
+        if (numAgedInstances! > 0) {
+            const commandEncoder = device.createCommandEncoder();
+            commandEncoder.copyBufferToBuffer({
+                sourceBuffer: sourcePositions,
+                sourceOffset: 0,
+                destinationBuffer: targetPositions,
+                destinationOffset: numParticles * 4 * 3,
+                size: numAgedInstances! * 4 * 3,
+            });
+            device.submit(commandEncoder.finish());
+        }
 
         // update particles
-        const uniforms = {
-            speedTexture: image,
-            bounds,
-            numParticles,
-            maxAge,
+        // write new age0 targetPositions from age0 sourcePositions
+        transform.model.shaderInputs.setProps({
+            particle: {
+                bounds,
+                numParticles,
+                maxAge,
 
-            viewportSphere,
-            viewportSphereCenter,
-            viewportSphereRadius,
-            viewportBounds: boundsClip ? clipBox(viewportBounds, bounds!) : viewportBounds,
-            viewportSpeedFactor,
+                viewportSphere,
+                viewportSphereCenter,
+                viewportSphereRadius,
+                viewportBounds: boundsClip ? clipBox(viewportBounds, bounds) : viewportBounds,
+                viewportSpeedFactor,
 
-            time: timeline.getTime(),
-            seed: Math.random(),
-        };
-        transform.run({uniforms});
-        transform.swap();
+                time: frame!,
+                seed: Math.random(),
+            },
+        });
+        transform.model.setBindings({speedTexture: image as Texture});
+        transform.run({
+            inputBuffers: {sourcePosition: sourcePositions},
+            outputBuffers: {targetPosition: targetPositions},
+            clearColor: false,
+            clearDepth: false,
+            clearStencil: false,
+        });
+
+        // swap, the just written buffer is the source of the next step
+        this.setState({
+            sourcePositions: targetPositions,
+            targetPositions: sourcePositions,
+            frame: frame! + 1,
+        });
     }
 
     _deleteTransformFeedback() {
@@ -333,21 +442,17 @@ export class ParticleLayer<D = any, ExtraPropsT = any> extends LineLayer<D, Extr
             return;
         }
 
-        sourcePositions.delete();
-        targetPositions.delete();
-        instanceColors.delete();
-        transform.delete();
+        sourcePositions?.destroy();
+        targetPositions?.destroy();
+        instanceColors?.destroy();
+        transform?.destroy();
 
         this.setState({
             initialized: false,
             sourcePositions: undefined,
             targetPositions: undefined,
-            sourcePositions64Low: undefined,
-            targetPositions64Low: undefined,
             instanceColors: undefined,
-            widths: undefined,
             transform: undefined,
-            colorTexture: undefined
         });
     }
 
@@ -358,15 +463,18 @@ export class ParticleLayer<D = any, ExtraPropsT = any> extends LineLayer<D, Extr
     }
 
     clear() {
-        const {numInstances, sourcePositions, targetPositions} = this.state;
+        const {initialized, numInstances, sourcePositions, targetPositions} = this.state ?? {};
+        if (!initialized) {
+            return;
+        }
 
-        sourcePositions.subData({data: new Float32Array(numInstances * 3)});
-        targetPositions.subData({data: new Float32Array(numInstances * 3)});
+        sourcePositions!.write(new Float32Array(numInstances! * 3));
+        targetPositions!.write(new Float32Array(numInstances! * 3));
 
         this.setNeedsRedraw();
     }
 
-    getColorRamp(colors: Record<number, string>): string {
+    _createColorTexture(colors: Record<number, string>): Texture {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d')!;
 
@@ -380,10 +488,18 @@ export class ParticleLayer<D = any, ExtraPropsT = any> extends LineLayer<D, Extr
 
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, 256, 1);
-        return canvas.toDataURL();
+
+        return this.context.device.createTexture({
+            width: 256,
+            height: 1,
+            format: 'rgba8unorm',
+            data: new Uint8Array(ctx.getImageData(0, 0, 256, 1).data.buffer),
+            sampler: {
+                minFilter: 'linear',
+                magFilter: 'linear',
+                addressModeU: 'clamp-to-edge',
+                addressModeV: 'clamp-to-edge',
+            },
+        });
     }
 }
-
-
-ParticleLayer.layerName = 'ParticleLayer';
-ParticleLayer.defaultProps = defaultProps;

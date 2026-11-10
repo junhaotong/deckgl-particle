@@ -4,9 +4,9 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script src="https://unpkg.com/deck.gl@8.9.36/dist.min.js"></script>
-    <script src="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.js"></script>
-    <script src="https://unpkg.com/deckgl-particle-layer@latest/dist/deckgl-particle.umd.js"></script>
+    <script src="https://unpkg.com/deck.gl@^9.1.0/dist.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@^6.0.0/dist/maplibre-gl.css" />
+    <script src="https://unpkg.com/deckgl-particle-layer@^2.0.0/dist/deckgl-particle.umd.js"></script>
 <!--        <script src="./dist/deckgl-particle.umd.js"></script>-->
     <title>Vite App</title>
   </head>
@@ -30,7 +30,10 @@
   <body>
     <div id="app"></div>
     <canvas id="deckgl-canvas"></canvas>
-    <script>
+    <script type="module">
+      // maplibre-gl 6 is published as ES module only
+      import * as maplibregl from 'https://unpkg.com/maplibre-gl@^6.0.0/dist/maplibre-gl.mjs'
+
       const config = {
         rotate: false,
         particle: {
@@ -133,12 +136,10 @@
 
       map.on('move', () => {
         if (deckLayer) {
-          const {
-            center,
-            zoom,
-            pitch,
-            bearing
-          } = map.transform
+          const center = map.getCenter()
+          const zoom = map.getZoom()
+          const pitch = map.getPitch()
+          const bearing = map.getBearing()
           deckLayer.setProps({
             viewState: {
               latitude: center.lat,
